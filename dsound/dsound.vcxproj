@@ -138,18 +138,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="ModUtils\Patterns.cpp" />
     <ClCompile Include="SafeWrite.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="dsound.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="borderless.h" />
     <ClInclude Include="calls.h" />
     <ClInclude Include="dsound.h" />
     <ClInclude Include="Logging.h" />
-    <ClInclude Include="ModUtils\Patterns.h" />
     <ClInclude Include="patches.h" />
     <ClInclude Include="SafeWrite.h" />
     <ClInclude Include="types.h" />

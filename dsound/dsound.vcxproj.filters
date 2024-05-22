@@ -13,16 +13,10 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\ModUtils">
-      <UniqueIdentifier>{c44851a8-dfb7-497a-a4a9-17850f62e18e}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ModUtils\Patterns.cpp">
-      <Filter>Source Files\ModUtils</Filter>
     </ClCompile>
     <ClCompile Include="SafeWrite.cpp">
       <Filter>Source Files</Filter>
@@ -40,9 +34,6 @@
     <ClInclude Include="Logging.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="ModUtils\Patterns.h">
-      <Filter>Source Files\ModUtils</Filter>
-    </ClInclude>
     <ClInclude Include="types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -53,9 +44,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="patches.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="borderless.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

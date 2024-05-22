@@ -1,55 +1,115 @@
 #pragma once
-#include "ModUtils/Patterns.h"
 #include "calls.h"
-#include "borderless.h"
+#define QPC_HOOK (void*)0x4E4040
 
-
-UInt32 callAdr = NULL;
-UInt32 jumpAddr = NULL;
-
-bool bSkipLauncher = 0;
-bool bSkipIntro = 0;
-bool bHideCursorInWindowed = 0;
-
-__declspec(naked) void SkipLauncher() {
+__declspec(naked) void TextureFilteringHook() {
 	__asm {
-		call callAdr
-		add esp, 4
-		mov eax, dword ptr ds:[ebp+10]
-		mov ebx, 1
-		jmp jumpAddr
+		mov cl, byte ptr[0x53E8AB]
+		test cl, cl
+		je DONE
+		mov cl, byte ptr[0x556985]
+		test cl, cl
+		jne checkNext
+		cmp eax, 1
+		je RETZERO
+	checkNext:
+		mov cl, byte ptr[0x556986]
+		test cl, cl
+		jne DONE
+		cmp eax, 2
+		jne DONE
+	RETZERO:
+		xor eax, eax
+	DONE:
+		ret
 	}
 }
 
-
-void loadIniOptions() {
-	char filename[MAX_PATH];
-	GetModuleFileNameA(NULL, filename, MAX_PATH);
-	strcpy((char*)(strrchr(filename, '\\') + 1), "dsound.ini");
-	bSkipLauncher = GetPrivateProfileIntA("MAIN", "bSkipLauncher", 0, filename);
-	bSkipIntro = GetPrivateProfileIntA("MAIN", "bSkipIntro", 0, filename);
-	borderless::bBorderlessWindowed = GetPrivateProfileIntA("MAIN", "bBorderlessWindowed", 0, filename);
-	bHideCursorInWindowed = GetPrivateProfileIntA("MAIN", "bHideCursorInWindowed", 0, filename);
+__declspec(naked) void TextureColorDepthHook() {
+	__asm {
+		mov cl, byte ptr ds:[0x53E8AB]
+		test cl, cl
+		je DONE
+		mov cl, byte ptr ds:[0x556987]
+		test cl, cl
+		jne DONE
+		test eax, eax
+		jle DONE
+		xor eax, eax
+	DONE :
+		ret
+	}
 }
+
+__declspec(naked) void AntiAliasingHook() {
+	__asm {
+		mov cl, byte ptr ds:[0x53E8AB]
+		test cl, cl
+		je DONE
+		mov ecx, eax
+		mov edx, 1
+		shl edx, cl
+		test dword ptr ds:[0x556980], edx
+		jne DONE
+		xor eax, eax
+	DONE :
+		ret
+	}
+}
+
+void* get_IAT_address(BYTE* base, const char* dll_name, const char* search)
+{
+	IMAGE_DOS_HEADER* dos_header = (IMAGE_DOS_HEADER*)base;
+	IMAGE_NT_HEADERS* nt_headers = (IMAGE_NT_HEADERS*)(base + dos_header->e_lfanew);
+	IMAGE_DATA_DIRECTORY section = nt_headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+	IMAGE_IMPORT_DESCRIPTOR* import_descriptor = (IMAGE_IMPORT_DESCRIPTOR*)(base + section.VirtualAddress);
+	for (size_t i = 0; import_descriptor[i].Name != NULL; i++)
+	{
+		if (!_stricmp((char*)(base + import_descriptor[i].Name), dll_name))
+		{
+			if (!import_descriptor[i].FirstThunk) { return nullptr; }
+			IMAGE_THUNK_DATA* name_table = (IMAGE_THUNK_DATA*)(base + import_descriptor[i].OriginalFirstThunk);
+			IMAGE_THUNK_DATA* import_table = (IMAGE_THUNK_DATA*)(base + import_descriptor[i].FirstThunk);
+			for (; name_table->u1.Ordinal != NULL; ++name_table, ++import_table)
+			{
+				if (!IMAGE_SNAP_BY_ORDINAL(name_table->u1.Ordinal))
+				{
+					IMAGE_IMPORT_BY_NAME* import_name = (IMAGE_IMPORT_BY_NAME*)(base + name_table->u1.ForwarderString);
+					char* func_name = &import_name->Name[0];
+					if (!_stricmp(func_name, search)) { return &import_table->u1.AddressOfData; }
+				}
+			}
+		}
+	}
+	return nullptr;
+}
+
 void writePatches() {
-	if (bSkipLauncher) {
-		auto skipLauncher = hook::pattern("C2 10 00 83 F8 4E").get_first(-19);
-		callAdr = (UInt32)hook::pattern("6A 0C 68 0D 04 00 00 53 33 FF").get_first(-48);
-		jumpAddr = (UInt32)hook::pattern("68 F0 00 00 00 68 25 04 00").get_first(-7);
-		WriteRelJump((UInt32)skipLauncher, (UInt32)SkipLauncher);
-	}
-	if (bSkipIntro) {
-		auto skipIntro = hook::pattern("8B 55 00 D9 EE 8B 42 48 51").get_first(-30);
-		auto skipIntroJump = hook::pattern("8B 44 24 14 85 C0 ? ? 50").get_first();
-		WriteRelJump((UInt32)skipIntro, (UInt32)skipIntroJump);
-	}
-
-	if (bHideCursorInWindowed) {
-		PatchMemoryNop(0x457A34, 8);
-	}
-
-	WriteRelLibCall(0x60F16F, (UInt32)borderless::CreateWindowExA_Hook);
-	WriteRelLibCall(0x60F08F, (UInt32)borderless::AdjustWindowRect_Hook);
-	WriteRelLibCall(0x60F235, (UInt32)borderless::SetWindowPos_Hook);
-
+	WriteRelJump(0x4076D1, (UInt32)TextureFilteringHook);
+	WriteRelJump(0x407641, (UInt32)TextureColorDepthHook);
+	WriteRelJump(0x4075EE, (UInt32)AntiAliasingHook);
 }
+
+BOOL WINAPI stp_hook(HANDLE hThread, int nPriority)
+{
+	writePatches();
+	BYTE* base = (BYTE*)GetModuleHandle(NULL);
+	void* address = get_IAT_address(base, "kernel32.dll", "SetThreadPriority");
+	// Restoring the original pointer
+	SafeWrite32((UInt32)address, (UInt32)&SetThreadPriority);
+	Log() << "Patches installed, original SetThreadPriority pointer restored.";
+	return SetThreadPriority(hThread, nPriority);
+}
+
+// Hooking SetThreadPriority (called after the exe is unpacked)
+void createLoaderHook() {
+	BYTE* base = (BYTE*)GetModuleHandle(NULL);
+	void* address = get_IAT_address(base, "kernel32.dll", "SetThreadPriority");
+	if (address == QPC_HOOK)
+	{
+		SafeWrite32((UInt32)address, (UInt32)&stp_hook);
+		Log() << "SetThreadPriority hook installed.";
+	}
+}
+
+
