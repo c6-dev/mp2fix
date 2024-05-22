@@ -1,0 +1,3 @@
+[submodule "dsound/ModUtils"]
+	path = dsound/ModUtils
+	url = https://github.com/CookiePLMonster/ModUtils
