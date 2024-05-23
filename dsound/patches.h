@@ -4,16 +4,16 @@
 
 __declspec(naked) void TextureFilteringHook() {
 	__asm {
-		mov cl, byte ptr[0x53E8AB]
+		mov cl, byte ptr ds:[0x53E8AB]
 		test cl, cl
 		je DONE
-		mov cl, byte ptr[0x556985]
+		mov cl, byte ptr ds:[0x556985]
 		test cl, cl
 		jne checkNext
 		cmp eax, 1
 		je RETZERO
 	checkNext:
-		mov cl, byte ptr[0x556986]
+		mov cl, byte ptr ds:[0x556986]
 		test cl, cl
 		jne DONE
 		cmp eax, 2
