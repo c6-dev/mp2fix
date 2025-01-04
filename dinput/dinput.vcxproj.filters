@@ -23,15 +23,15 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="dsound.def">
+    <None Include="dinput.def">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="dsound.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\code\calls.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dinput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\code\Logging.h">
